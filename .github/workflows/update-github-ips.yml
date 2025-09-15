@@ -32,6 +32,15 @@ jobs:
             echo "CHANGED=false" >> $GITHUB_ENV
           fi
 
+      - name: Get diff for issue
+        if: env.CHANGED == 'true'
+        id: getdiff
+        run: |
+          git show HEAD -- github-ips.json > diff.txt
+          echo "DIFF<<EOF" >> $GITHUB_ENV
+          cat diff.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Create issue if IPs updated
         if: env.CHANGED == 'true'
         uses: actions/github-script@v7
@@ -41,5 +50,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'GitHub IPs Updated',
-              body: 'The GitHub IPs have been updated and committed to github-ips.json.'
+              body: 'The GitHub IPs have been updated and committed to github-ips.json.\n\nDiff:\n\n' + process.env.DIFF
             })
