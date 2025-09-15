@@ -1,9 +1,9 @@
 name: Update GitHub IPs
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'  # Runs at midnight every Sunday
 
 jobs:
   update-github-ips:
