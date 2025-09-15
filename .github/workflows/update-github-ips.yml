@@ -50,6 +50,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: 'GitHub IPs Updated',
-              assignees: ['@evanallen13'],
+              assignees: ['evanallen13'],
               body: 'The GitHub IPs have been updated and committed to github-ips.json.\n\nDiff:\n\n' + process.env.DIFF
             })
