@@ -17,7 +17,7 @@ jobs:
 
       - name: Fetch GitHub IPs
         run: |
-          curl -sSL https://api.github.com/meta -o github-ips.json
+          curl -sSL https://api.github.com/meta | jq . > github-ips.json
 
       - name: Commit changes if any
         run: |
