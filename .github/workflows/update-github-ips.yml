@@ -3,7 +3,7 @@ name: Update GitHub IPs
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '3 10 * * *'
 
 jobs:
   update-github-ips:
