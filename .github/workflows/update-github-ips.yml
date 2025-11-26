@@ -15,6 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Restore previous github-ips.json
+        run: |
+          cp github-ips.json github-ips-prev.json || touch github-ips-prev.json
+
       - name: Fetch GitHub IPs
         run: |
           curl -sSL https://api.github.com/meta | jq . > github-ips.json
@@ -32,13 +36,41 @@ jobs:
             echo "CHANGED=false" >> $GITHUB_ENV
           fi
 
-      - name: Get diff for issue
+      - name: Print IP diffs by purpose
         if: env.CHANGED == 'true'
-        id: getdiff
         run: |
-          git show HEAD -- github-ips.json > diff.txt
-          echo "DIFF<<EOF" >> $GITHUB_ENV
-          cat diff.txt >> $GITHUB_ENV
+          cat <<'EOF' > print_ip_diff.sh
+          #!/bin/bash
+          jq -r '
+            to_entries[]
+            | select(.value | type == "array")
+            | .key
+          ' github-ips.json > keys.txt
+
+          echo "## GitHub IP Changes by Purpose" > ip-diff-summary.txt
+          for k in $(cat keys.txt); do
+            echo "### $k" >> ip-diff-summary.txt
+            jq -r --arg k "$k" '.[$k][]' github-ips.json | sort > new.txt
+            jq -r --arg k "$k" '.[$k][]' github-ips-prev.json | sort > old.txt
+            comm -13 old.txt new.txt > added.txt
+            comm -23 old.txt new.txt > removed.txt
+            if [ -s added.txt ]; then
+              echo "**Added**:" >> ip-diff-summary.txt
+              cat added.txt | sed 's/^/- /' >> ip-diff-summary.txt
+            fi
+            if [ -s removed.txt ]; then
+              echo "**Removed**:" >> ip-diff-summary.txt
+              cat removed.txt | sed 's/^/- /' >> ip-diff-summary.txt
+            fi
+          done
+          EOF
+          bash print_ip_diff.sh
+
+      - name: Get summary for issue
+        if: env.CHANGED == 'true'
+        run: |
+          echo "IP_DIFF_SUMMARY<<EOF" >> $GITHUB_ENV
+          cat ip-diff-summary.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Create issue if IPs updated
@@ -51,5 +83,5 @@ jobs:
               repo: context.repo.repo,
               title: 'GitHub IPs Updated',
               assignees: ['evanallen13'],
-              body: 'The GitHub IPs have been updated and committed to github-ips.json.\n\nDiff:\n\n' + process.env.DIFF
+              body: 'The GitHub IPs have been updated and committed to github-ips.json.\n\n' + process.env.IP_DIFF_SUMMARY
             })
