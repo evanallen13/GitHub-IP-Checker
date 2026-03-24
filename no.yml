@@ -1,49 +1,28 @@
-name: wk1
+name: wk2
 
 on:
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["wk1"]
+    types:
+      - completed
 
 jobs:
-  load-test:
+  swap-slots:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      # 🔐 Login to Azure
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 🚀 Deploy to staging slot
-      - name: Deploy to App Service staging slot
-        uses: azure/webapps-deploy@v3
+      - name: Swap staging and production slots
+        uses: azure/cli@v1
         with:
-          app-name: AppService160171089
-          slot-name: staging
-          package: .
-
-      # 🧪 Run Azure Load Test
-      - name: Run Load Test
-        id: loadtest
-        uses: azure/load-testing@v1
-        with:
-          loadTestConfigFile: test1.yml
-          loadTestResource: lt60171089
-
-      # ❌ Fail workflow if test fails
-      - name: Fail if load test failed
-        if: failure()
-        run: exit 1
-
-      # 📦 Upload results
-      - name: Upload Load Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: loadTestResults
-          path: loadTest/results.zip
+          inlineScript: |
+            az webapp deployment slot swap \
+              --name AppService160171089 \
+              --resource-group <YOUR_RESOURCE_GROUP> \
+              --slot staging \
+              --target-slot production
